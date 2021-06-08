@@ -5,8 +5,11 @@ package msgraph
 
 import (
 	"bytes"
+	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
+
+	//"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -125,6 +128,37 @@ func (g *GraphClient) makeGETAPICall(apicall string, getParams url.Values, v int
 	return g.performRequest(req, v)
 }
 
+// makePOSTAPICall performs an API-Call to the msgraph API. This func uses sync.Mutex to synchronize all API-calls
+func (g *GraphClient) makePOSTAPICall(apicall string, contentType string, postBody string, v interface{}) error {
+	g.apiCall.Lock()
+	defer g.apiCall.Unlock() // unlock when the func returns
+	// Check token
+	if g.token.WantsToBeRefreshed() { // Token not valid anymore?
+		err := g.refreshToken()
+		if err != nil {
+			return err
+		}
+	}
+
+	reqURL, err := url.ParseRequestURI(BaseURL)
+	if err != nil {
+		return fmt.Errorf("unable to parse URI %v: %v", BaseURL, err)
+	}
+
+	// Add Version to API-Call, the leading slash is always added by the calling func
+	reqURL.Path = "/" + APIVersion + apicall
+
+	req, err := http.NewRequest("POST", reqURL.String(), bytes.NewBuffer([]byte(postBody)))
+	if err != nil {
+		return fmt.Errorf("HTTP request error: %v", err)
+	}
+
+	req.Header.Add("Content-Type", contentType)
+	req.Header.Add("Authorization", g.token.GetAccessToken())
+
+	return g.performRequest(req, v)
+}
+
 // performRequest performs a pre-prepared http.Request and does the proper error-handling for it.
 // does a json.Unmarshal into the v interface{} and returns the error of it if everything went well so far.
 func (g *GraphClient) performRequest(req *http.Request, v interface{}) error {
@@ -199,6 +233,57 @@ func (g *GraphClient) GetGroup(groupID string) (Group, error) {
 	group := Group{graphClient: g}
 	err := g.makeGETAPICall(resource, nil, &group)
 	return group, err
+}
+
+type Mail struct {
+	Message Message `json:"message"`
+}
+
+type Message struct {
+	ToRecipients  []Recipient `json:"toRecipients"`
+	CCRecipients  []Recipient `json:"ccRecipients"`
+	BCCRecipients []Recipient `json:"bccRecipients"`
+	Subject       string      `json:"subject"`
+	Body          Body        `json:"body"`
+}
+
+type Recipient struct {
+	EmailAddress EmailAddress `json:"emailAddress"`
+}
+
+type Body struct {
+	ContentType string `json:"contentType"`
+	Content     string `json:"content"`
+}
+
+// SendMailJSON performs a JSON-based sendMail request
+func (g *GraphClient) SendMailJSON(from string, SendMail Mail) error {
+	resource := fmt.Sprintf("/users/%v/sendMail", url.PathEscape(from))
+
+	if SendMail.Message.BCCRecipients == nil {
+		SendMail.Message.BCCRecipients = []Recipient{}
+	}
+	if SendMail.Message.CCRecipients == nil {
+		SendMail.Message.CCRecipients = []Recipient{}
+	}
+
+	data, err := json.Marshal(SendMail)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	dataStr := string(data)
+
+	err = g.makePOSTAPICall(resource, "application/json", dataStr, nil)
+	return err
+}
+
+// SendMailMIME performs a text/plain (in MIME format) sendMail request
+func (g *GraphClient) SendMailMIME(from string, data []byte) error {
+	resource := fmt.Sprintf("/users/%v/sendMail", url.PathEscape(from))
+	datab64 := b64.StdEncoding.EncodeToString(data)
+	err := g.makePOSTAPICall(resource, "text/plain", datab64, nil)
+	return err
 }
 
 // UnmarshalJSON implements the json unmarshal to be used by the json-library.
