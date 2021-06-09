@@ -66,7 +66,7 @@ events, err := graphClient.ListCalendarView("alice@contoso.com", startTime, endT
 
 ### Using *go get*
 
-    $ go get github.com/open-networks/go-msgraph
+    $ go get github.com/R2D2Env/go-msgraph
 
 You can use `go get -u` to update the package.
 
@@ -75,3 +75,5 @@ You can use `go get -u` to update the package.
 For docs, see http://godoc.org/github.com/open-networks/go-msgraph or run:
 
     $ godoc github.com/open-networks/go-msgraph
+
+Note that these docs are from the main fork of the module and therefore will not contain documentation about the SendMail capability.
