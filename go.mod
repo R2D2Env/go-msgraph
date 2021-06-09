@@ -1,3 +1,3 @@
-module github.com/open-networks/go-msgraph
+module github.com/R2D2Env/go-msgraph
 
-go 1.13
+go 1.16

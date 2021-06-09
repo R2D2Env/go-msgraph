@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
+	//"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -121,6 +123,37 @@ func (g *GraphClient) makeGETAPICall(apicall string, getParams url.Values, v int
 	// TODO: MaxPageSize is currently 999, if there are any time more than 999 entries this will make the program unpredictable... hence start to use paging (!)
 	getParams.Add("$top", strconv.Itoa(MaxPageSize))
 	req.URL.RawQuery = getParams.Encode() // set query parameters
+
+	return g.performRequest(req, v)
+}
+
+// makePOSTAPICall performs an API-Call to the msgraph API. This func uses sync.Mutex to synchronize all API-calls
+func (g *GraphClient) makePOSTAPICall(apicall string, contentType string, postBody string, v interface{}) error {
+	g.apiCall.Lock()
+	defer g.apiCall.Unlock() // unlock when the func returns
+	// Check token
+	if g.token.WantsToBeRefreshed() { // Token not valid anymore?
+		err := g.refreshToken()
+		if err != nil {
+			return err
+		}
+	}
+
+	reqURL, err := url.ParseRequestURI(BaseURL)
+	if err != nil {
+		return fmt.Errorf("unable to parse URI %v: %v", BaseURL, err)
+	}
+
+	// Add Version to API-Call, the leading slash is always added by the calling func
+	reqURL.Path = "/" + APIVersion + apicall
+
+	req, err := http.NewRequest("POST", reqURL.String(), bytes.NewBuffer([]byte(postBody)))
+	if err != nil {
+		return fmt.Errorf("HTTP request error: %v", err)
+	}
+
+	req.Header.Add("Content-Type", contentType)
+	req.Header.Add("Authorization", g.token.GetAccessToken())
 
 	return g.performRequest(req, v)
 }
