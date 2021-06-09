@@ -8,7 +8,9 @@
 go-msgraph is a go lang implementation of the Microsoft Graph API. See https://developer.microsoft.com/en-us/graph/docs/concepts/overview
 
 ## General
-This implementation has been written to get various user, group and calendar details out of a Microsoft Azure Active Directory. Currently only READ-access is implemented, but you are welcome to add WRITE-support to it & backmerge it
+This implementation has been written to get various user, group and calendar details out of a Microsoft Azure Active Directory. Currently only READ-access is implemented.
+
+POST-access to the /sendMail API has also been implemented.
 
 ## Features
 working & tested:
@@ -16,6 +18,7 @@ working & tested:
 - automatically grab & refresh token for API-access
 - json-load the GraphClient struct & initialize it
 - set timezone for full-day CalendarEvent
+- send mail using /users/\<user\>/sendMail endpoint
 
 in progress:
 - implement paging to load huge data-sets, currently limitted to one page, 999 entries
@@ -72,6 +75,3 @@ You can use `go get -u` to update the package.
 For docs, see http://godoc.org/github.com/open-networks/go-msgraph or run:
 
     $ godoc github.com/open-networks/go-msgraph
-
-
-
